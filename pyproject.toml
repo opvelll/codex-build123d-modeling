@@ -1,0 +1,7 @@
+[project]
+name = "new-project-4"
+version = "0.1.0"
+requires-python = ">=3.13"
+dependencies = [
+    "build123d>=0.10.0",
+]
