@@ -1,9 +1,10 @@
 from pathlib import Path
 
-from build123d import Align, Box, Color, Cylinder, Rotation, export_gltf, export_step, export_stl
+from build123d import Align, Axis, Box, Color, RegularPolygon, export_gltf, export_step, export_stl, extrude
 
 
 OUT_DIR = Path("output")
+LOW_POLY_SIDES = 12
 
 
 OAK = Color(0.72, 0.49, 0.27)
@@ -48,12 +49,11 @@ def cylinder(
     color: Color,
     rotation: tuple[float, float, float] = (0, 0, 0),
 ):
-    shape = Cylinder(
-        radius,
-        height,
-        rotation=Rotation(*rotation),
-        align=(Align.CENTER, Align.CENTER, Align.CENTER),
-    )
+    shape = extrude(RegularPolygon(radius, LOW_POLY_SIDES), amount=height)
+    shape = shape.translate((0, 0, -height / 2))
+    for axis, angle in zip((Axis.X, Axis.Y, Axis.Z), rotation, strict=True):
+        if angle:
+            shape = shape.rotate(axis, angle)
     shape = shape.translate(at)
     shape.label = label
     shape.color = color

@@ -6,6 +6,7 @@
 - Use `pnpm` for the browser viewer and Playwright checks.
 - The generated CAD/viewer assets live in `output/`.
 - In `build123d`, transformation helpers such as `translate()` return a transformed shape; assign the result back, e.g. `shape = shape.translate(...)`.
+- For intentionally low-poly round parts, model them directly with `RegularPolygon(..., side_count=12)` and `extrude()` instead of creating cylinders and reducing them in a later step.
 - Before exporting CAD/viewer assets, union modeled parts with `fuse()` and verify the result is a single solid when the requested model should be one body.
 
 ## Common Commands
