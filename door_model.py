@@ -1,28 +1,16 @@
 from pathlib import Path
 
-from build123d import (
-    Align,
-    Box,
-    Color,
-    Compound,
-    Cylinder,
-    Rotation,
-    export_gltf,
-    export_step,
-    export_stl,
-)
+from build123d import Align, Box, Color, Compound, Cylinder, Rotation, export_gltf, export_step, export_stl
 
 
 OUT_DIR = Path("output")
 
 
-WOOD = Color(0.48, 0.24, 0.11)
-WOOD_DARK = Color(0.26, 0.13, 0.06)
-WOOD_MID = Color(0.38, 0.19, 0.09)
-WOOD_LIGHT = Color(0.68, 0.39, 0.18)
-SHADOW = Color(0.12, 0.07, 0.04)
-BRASS = Color(0.86, 0.69, 0.34)
-DARK_BRASS = Color(0.50, 0.38, 0.17)
+OAK = Color(0.72, 0.49, 0.27)
+OAK_DARK = Color(0.42, 0.25, 0.12)
+OAK_LIGHT = Color(0.86, 0.66, 0.38)
+SHADOW = Color(0.18, 0.12, 0.07)
+FELT = Color(0.05, 0.06, 0.055)
 
 
 def box(
@@ -84,110 +72,66 @@ def add_cylinder(
     parts.append(cylinder(radius, height, at, label, color, rotation))
 
 
-def panel_frame(
-    x: float,
-    z: float,
-    outer_w: float,
-    outer_h: float,
-    strip: float,
-    y: float,
-    label_prefix: str,
-    color: Color = WOOD_DARK,
-):
-    return [
-        box(outer_w, 6, strip, (x, y, z + outer_h / 2 - strip / 2), f"{label_prefix} top rail", color),
-        box(outer_w, 6, strip, (x, y, z - outer_h / 2 + strip / 2), f"{label_prefix} bottom rail", color),
-        box(strip, 6, outer_h, (x - outer_w / 2 + strip / 2, y, z), f"{label_prefix} left stile", color),
-        box(strip, 6, outer_h, (x + outer_w / 2 - strip / 2, y, z), f"{label_prefix} right stile", color),
+def add_seat(parts: list) -> None:
+    add_box(parts, 520, 470, 44, (0, 0, 470), "single slab seat", OAK)
+    add_box(parts, 550, 30, 50, (0, -250, 448), "front rounded seat lip", OAK_LIGHT)
+    add_box(parts, 550, 26, 42, (0, 250, 450), "rear seat rail", OAK_DARK)
+    add_box(parts, 28, 470, 38, (-275, 0, 450), "left seat edge band", OAK_DARK)
+    add_box(parts, 28, 470, 38, (275, 0, 450), "right seat edge band", OAK_DARK)
+
+    for idx, x in enumerate((-205, -105, 0, 110, 215), start=1):
+        add_box(parts, 6, 430, 3, (x, -4, 494), f"subtle seat grain {idx}", OAK_DARK)
+
+
+def add_legs(parts: list) -> None:
+    leg_positions = [
+        (-215, -175, "front left leg"),
+        (215, -175, "front right leg"),
+        (-215, 175, "rear left leg"),
+        (215, 175, "rear right leg"),
     ]
 
+    for x, y, label in leg_positions:
+        add_box(parts, 46, 46, 445, (x, y, 222), label, OAK_DARK)
+        add_box(parts, 54, 54, 18, (x, y, 9), f"{label} felt foot", FELT)
 
-def add_panel(parts: list, x: float, z: float, outer_w: float, outer_h: float, label: str, front_y: float) -> None:
-    add_box(parts, outer_w - 112, 4, outer_h - 112, (x, front_y + 1.5, z), f"{label} recessed field", Color(0.31, 0.15, 0.07))
-    parts.extend(panel_frame(x, z, outer_w, outer_h, 42, front_y + 6, f"{label} raised frame", WOOD_DARK))
-    parts.extend(panel_frame(x, z, outer_w - 70, outer_h - 70, 18, front_y + 10, f"{label} inner bevel", WOOD_LIGHT))
-    parts.extend(panel_frame(x, z, outer_w - 126, outer_h - 126, 12, front_y + 13, f"{label} shadow bead", SHADOW))
+    add_box(parts, 470, 34, 42, (0, -178, 325), "front apron", OAK_DARK)
+    add_box(parts, 470, 34, 42, (0, 178, 325), "rear apron", OAK_DARK)
+    add_box(parts, 34, 365, 42, (-218, 0, 325), "left side apron", OAK_DARK)
+    add_box(parts, 34, 365, 42, (218, 0, 325), "right side apron", OAK_DARK)
 
-
-def add_hinge(parts: list, x: float, y: float, z: float, index: int) -> None:
-    add_box(parts, 34, 8, 154, (x + 15, y + 8, z), f"hinge {index} door leaf", DARK_BRASS)
-    add_box(parts, 34, 8, 154, (x - 18, y + 8, z), f"hinge {index} jamb leaf", DARK_BRASS)
-
-    for offset, height in ((-54, 42), (0, 38), (54, 42)):
-        add_cylinder(parts, 16, height, (x, y, z + offset), f"hinge {index} barrel knuckle", BRASS)
-
-    add_cylinder(parts, 8, 122, (x, y, z), f"hinge {index} center pin", Color(0.92, 0.78, 0.42))
-    for screw_x in (x - 18, x + 15):
-        for screw_z in (z - 50, z + 50):
-            add_cylinder(parts, 5.5, 5, (screw_x, y + 13, screw_z), f"hinge {index} screw head", BRASS, (90, 0, 0))
+    add_cylinder(parts, 13, 430, (0, -177, 215), "front round stretcher", OAK_LIGHT, (0, 90, 0))
+    add_cylinder(parts, 13, 430, (0, 177, 215), "rear round stretcher", OAK_LIGHT, (0, 90, 0))
+    add_cylinder(parts, 12, 350, (-218, 0, 185), "left side round stretcher", OAK_LIGHT, (90, 0, 0))
+    add_cylinder(parts, 12, 350, (218, 0, 185), "right side round stretcher", OAK_LIGHT, (90, 0, 0))
 
 
-def add_handle_set(parts: list, handle_x: float, y: float, z: float, door_thickness: float) -> None:
-    add_box(parts, 78, 8, 250, (handle_x, y + 5, z), "brass escutcheon plate", DARK_BRASS)
-    add_cylinder(parts, 22, 10, (handle_x, y + 12, z + 98), "deadbolt thumb turn", BRASS, (90, 0, 0))
-    add_cylinder(parts, 15, 12, (handle_x, y + 12, z - 90), "key cylinder", BRASS, (90, 0, 0))
-    add_cylinder(parts, 30, 24, (handle_x, y + 18, z), "round lever rose", BRASS, (90, 0, 0))
-    add_cylinder(parts, 13, 178, (handle_x - 78, y + 18, z), "curved brass lever", BRASS, (0, 90, 0))
-    add_cylinder(parts, 19, 24, (handle_x - 168, y + 18, z), "lever rounded end", BRASS, (90, 0, 0))
-    add_cylinder(parts, 12, door_thickness + 20, (handle_x, 0, z), "latch spindle", DARK_BRASS, (90, 0, 0))
-    add_box(parts, 18, 8, 88, (450 + 3, 0, z), "visible latch plate", BRASS)
+def add_back(parts: list) -> None:
+    add_box(parts, 54, 54, 600, (-215, 206, 755), "left rear back post", OAK_DARK)
+    add_box(parts, 54, 54, 600, (215, 206, 755), "right rear back post", OAK_DARK)
+
+    add_box(parts, 490, 42, 70, (0, 214, 980), "plain top back rail", OAK_DARK)
+    add_box(parts, 440, 34, 54, (0, 212, 730), "lower back rail", OAK_DARK)
+    add_box(parts, 390, 20, 150, (0, 224, 855), "simple inset back panel", OAK_LIGHT)
+
+    for idx, x in enumerate((-150, -75, 0, 75, 150), start=1):
+        add_box(parts, 36, 30, 300, (x, 214, 845), f"vertical back slat {idx}", OAK)
+
+    add_box(parts, 510, 8, 12, (0, 242, 948), "back rail highlight", OAK_LIGHT)
+    add_box(parts, 410, 8, 10, (0, 242, 690), "lower rail shadow line", SHADOW)
 
 
-def add_wood_grain(parts: list, door_width: float, front_y: float) -> None:
-    for idx, x in enumerate((-350, -270, -190, -104, -26, 58, 142, 228, 318), start=1):
-        add_box(parts, 7, 2.5, 1910, (x, front_y + 15, 1060), f"vertical wood grain {idx}", Color(0.42, 0.20, 0.09))
-    for idx, z in enumerate((305, 600, 905, 1245, 1585, 1890), start=1):
-        add_box(parts, door_width - 110, 2.5, 5, (0, front_y + 16, z), f"subtle cross grain {idx}", Color(0.58, 0.29, 0.13))
-
-
-def make_door() -> Compound:
-    door_width = 900
-    door_height = 2100
-    door_thickness = 42
-    frame_width = 86
-    frame_depth = 96
-    frame_overhead = 70
-
-    front_y = door_thickness / 2 + 3
-    parts = [
-        box(door_width, door_thickness, door_height, (0, 0, door_height / 2), "solid walnut door slab", WOOD),
-        box(frame_width, frame_depth, door_height + frame_overhead, (-(door_width / 2 + frame_width / 2), 0, (door_height + frame_overhead) / 2), "left jamb", WOOD_DARK),
-        box(frame_width, frame_depth, door_height + frame_overhead, ((door_width / 2 + frame_width / 2), 0, (door_height + frame_overhead) / 2), "right jamb", WOOD_DARK),
-        box(door_width + frame_width * 2, frame_depth, frame_width, (0, 0, door_height + frame_width / 2), "head jamb", WOOD_DARK),
-    ]
-
-    # Casing, stops, threshold, and shadow reveals make the opening read as a real assembly.
-    add_box(parts, 48, 40, door_height + 230, (-(door_width / 2 + frame_width + 34), front_y - 10, (door_height + 110) / 2), "left front casing", WOOD_MID)
-    add_box(parts, 48, 40, door_height + 230, ((door_width / 2 + frame_width + 34), front_y - 10, (door_height + 110) / 2), "right front casing", WOOD_MID)
-    add_box(parts, door_width + frame_width * 2 + 120, 40, 48, (0, front_y - 10, door_height + frame_width + 42), "top front casing", WOOD_MID)
-    add_box(parts, 18, 16, door_height - 30, (-(door_width / 2 + 8), front_y + 6, door_height / 2), "left door stop", WOOD_LIGHT)
-    add_box(parts, 18, 16, door_height - 30, ((door_width / 2 + 8), front_y + 6, door_height / 2), "right door stop", WOOD_LIGHT)
-    add_box(parts, door_width + 36, 16, 18, (0, front_y + 6, door_height - 8), "head door stop", WOOD_LIGHT)
-
-    add_panel(parts, 0, 610, 700, 690, "lower panel", front_y)
-    add_panel(parts, 0, 1465, 700, 760, "upper panel", front_y)
-    add_wood_grain(parts, door_width, front_y)
-
-    add_box(parts, door_width - 90, 3, 8, (0, front_y + 14, 1040), "subtle lock rail shadow line", SHADOW)
-    add_box(parts, door_width - 90, 3, 8, (0, front_y + 14, 140), "bottom rail shadow line", SHADOW)
-    add_box(parts, door_width - 90, 3, 8, (0, front_y + 14, door_height - 70), "top rail shadow line", SHADOW)
-
-    for idx, z in enumerate((360, 1050, 1740), start=1):
-        add_hinge(parts, -(door_width / 2 + 18), -(door_thickness / 2 + 16), z, idx)
-
-    handle_x = door_width / 2 - 120
-    handle_z = 1010
-    add_handle_set(parts, handle_x, door_thickness / 2, handle_z, door_thickness)
-    add_cylinder(parts, 18, 10, (0, front_y + 18, 1680), "brass peephole", BRASS, (90, 0, 0))
-    add_cylinder(parts, 7, 13, (0, front_y + 24, 1680), "dark peephole glass", Color(0.04, 0.05, 0.06), (90, 0, 0))
-
-    model = Compound(children=parts, label="parametric door")
-    return model
+def make_chair() -> Compound:
+    parts = []
+    add_seat(parts)
+    add_legs(parts)
+    add_back(parts)
+    return Compound(children=parts, label="simple wooden chair")
 
 
 def main() -> None:
     OUT_DIR.mkdir(exist_ok=True)
-    model = make_door()
+    model = make_chair()
     export_gltf(model, OUT_DIR / "door_model.glb", binary=True)
     export_step(model, OUT_DIR / "door_model.step")
     export_stl(model, OUT_DIR / "door_model.stl")

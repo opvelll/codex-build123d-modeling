@@ -4,18 +4,24 @@
   "description": "",
   "type": "module",
   "scripts": {
-    "dev": "vite --host 127.0.0.1 --port 4173",
-    "test": "playwright test"
+    "dev": "vite --host 127.0.0.1 --port 4173"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "packageManager": "pnpm@10.32.1",
   "dependencies": {
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6",
     "three": "^0.184.0"
   },
   "devDependencies": {
-    "@playwright/test": "^1.59.1",
+    "@tailwindcss/vite": "^4.3.0",
+    "@vitejs/plugin-react": "^6.0.1",
+    "autoprefixer": "^10.5.0",
+    "playwright": "^1.59.1",
+    "postcss": "^8.5.14",
+    "tailwindcss": "^4.3.0",
     "vite": "^8.0.11"
   }
 }
