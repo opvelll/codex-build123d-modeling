@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from build123d import Align, Box, Color, Compound, Cylinder, Rotation, export_gltf, export_step, export_stl
+from build123d import Align, Box, Color, Cylinder, Rotation, export_gltf, export_step, export_stl
 
 
 OUT_DIR = Path("output")
@@ -22,7 +22,7 @@ def box(
     color: Color,
 ):
     shape = Box(length, width, height, align=(Align.CENTER, Align.CENTER, Align.CENTER))
-    shape.translate(at)
+    shape = shape.translate(at)
     shape.label = label
     shape.color = color
     return shape
@@ -54,7 +54,7 @@ def cylinder(
         rotation=Rotation(*rotation),
         align=(Align.CENTER, Align.CENTER, Align.CENTER),
     )
-    shape.translate(at)
+    shape = shape.translate(at)
     shape.label = label
     shape.color = color
     return shape
@@ -75,12 +75,12 @@ def add_cylinder(
 def add_seat(parts: list) -> None:
     add_box(parts, 520, 470, 44, (0, 0, 470), "single slab seat", OAK)
     add_box(parts, 550, 30, 50, (0, -250, 448), "front rounded seat lip", OAK_LIGHT)
-    add_box(parts, 550, 26, 42, (0, 250, 450), "rear seat rail", OAK_DARK)
+    add_box(parts, 550, 34, 42, (0, 238, 450), "rear seat rail", OAK_DARK)
     add_box(parts, 28, 470, 38, (-275, 0, 450), "left seat edge band", OAK_DARK)
     add_box(parts, 28, 470, 38, (275, 0, 450), "right seat edge band", OAK_DARK)
 
     for idx, x in enumerate((-205, -105, 0, 110, 215), start=1):
-        add_box(parts, 6, 430, 3, (x, -4, 494), f"subtle seat grain {idx}", OAK_DARK)
+        add_box(parts, 6, 430, 6, (x, -4, 491), f"subtle seat grain {idx}", OAK_DARK)
 
 
 def add_legs(parts: list) -> None:
@@ -92,7 +92,7 @@ def add_legs(parts: list) -> None:
     ]
 
     for x, y, label in leg_positions:
-        add_box(parts, 46, 46, 445, (x, y, 222), label, OAK_DARK)
+        add_box(parts, 46, 46, 470, (x, y, 235), label, OAK_DARK)
         add_box(parts, 54, 54, 18, (x, y, 9), f"{label} felt foot", FELT)
 
     add_box(parts, 470, 34, 42, (0, -178, 325), "front apron", OAK_DARK)
@@ -117,16 +117,30 @@ def add_back(parts: list) -> None:
     for idx, x in enumerate((-150, -75, 0, 75, 150), start=1):
         add_box(parts, 36, 30, 300, (x, 214, 845), f"vertical back slat {idx}", OAK)
 
-    add_box(parts, 510, 8, 12, (0, 242, 948), "back rail highlight", OAK_LIGHT)
-    add_box(parts, 410, 8, 10, (0, 242, 690), "lower rail shadow line", SHADOW)
+    add_box(parts, 510, 12, 12, (0, 230, 948), "back rail highlight", OAK_LIGHT)
+    add_box(parts, 410, 12, 10, (0, 225, 690), "lower rail shadow line", SHADOW)
 
 
-def make_chair() -> Compound:
+def union_parts(parts: list):
+    if not parts:
+        raise ValueError("No chair parts were generated")
+
+    model = parts[0]
+    for part in parts[1:]:
+        model = model.fuse(part)
+
+    model = model.clean()
+    model.label = "simple wooden chair union"
+    model.color = OAK
+    return model
+
+
+def make_chair():
     parts = []
     add_seat(parts)
     add_legs(parts)
     add_back(parts)
-    return Compound(children=parts, label="simple wooden chair")
+    return union_parts(parts)
 
 
 def main() -> None:
