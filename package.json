@@ -1,14 +1,16 @@
 {
-  "name": "new-project-4",
+  "name": "codex-build123d-modeling",
   "version": "1.0.0",
-  "description": "",
+  "description": "Build build123d models with Codex and inspect them in a browser.",
   "type": "module",
   "scripts": {
-    "dev": "vite --host 127.0.0.1 --port 4173"
+    "dev": "vite --host 127.0.0.1 --port 4173",
+    "build": "vite build",
+    "test": "playwright test"
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
+  "license": "MIT",
   "packageManager": "pnpm@10.32.1",
   "dependencies": {
     "react": "^19.2.6",

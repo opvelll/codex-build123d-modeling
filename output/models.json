@@ -1,0 +1,20 @@
+{
+  "models": [
+    {
+      "id": "chair",
+      "name": "Wooden Chair",
+      "description": "A simple low-poly wooden chair built as one solid.",
+      "files": {
+        "glb": "/output/chair/chair.glb",
+        "step": "/output/chair/chair.step",
+        "stl": "/output/chair/chair.stl"
+      },
+      "dimensions": {
+        "x": 578.0,
+        "y": 520.0,
+        "z": 1055.0,
+        "unit": "mm"
+      }
+    }
+  ]
+}

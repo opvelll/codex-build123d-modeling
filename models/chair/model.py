@@ -1,12 +1,13 @@
-from pathlib import Path
-
-from build123d import Align, Axis, Box, Color, RegularPolygon, export_gltf, export_step, export_stl, extrude
+from build123d import Align, Axis, Box, Color, RegularPolygon, extrude
 
 
-OUT_DIR = Path("output")
+MODEL = {
+    "id": "chair",
+    "name": "Wooden Chair",
+    "description": "A simple low-poly wooden chair built as one solid.",
+}
+
 LOW_POLY_SIDES = 12
-
-
 OAK = Color(0.72, 0.49, 0.27)
 OAK_DARK = Color(0.42, 0.25, 0.12)
 OAK_LIGHT = Color(0.86, 0.66, 0.38)
@@ -99,7 +100,6 @@ def add_legs(parts: list) -> None:
     add_box(parts, 470, 34, 42, (0, 178, 325), "rear apron", OAK_DARK)
     add_box(parts, 34, 365, 42, (-218, 0, 325), "left side apron", OAK_DARK)
     add_box(parts, 34, 365, 42, (218, 0, 325), "right side apron", OAK_DARK)
-
     add_cylinder(parts, 13, 430, (0, -177, 215), "front round stretcher", OAK_LIGHT, (0, 90, 0))
     add_cylinder(parts, 13, 430, (0, 177, 215), "rear round stretcher", OAK_LIGHT, (0, 90, 0))
     add_cylinder(parts, 12, 350, (-218, 0, 185), "left side round stretcher", OAK_LIGHT, (90, 0, 0))
@@ -109,7 +109,6 @@ def add_legs(parts: list) -> None:
 def add_back(parts: list) -> None:
     add_box(parts, 54, 54, 600, (-215, 206, 755), "left rear back post", OAK_DARK)
     add_box(parts, 54, 54, 600, (215, 206, 755), "right rear back post", OAK_DARK)
-
     add_box(parts, 490, 42, 70, (0, 214, 980), "plain top back rail", OAK_DARK)
     add_box(parts, 440, 34, 54, (0, 212, 730), "lower back rail", OAK_DARK)
     add_box(parts, 390, 20, 150, (0, 224, 855), "simple inset back panel", OAK_LIGHT)
@@ -135,24 +134,9 @@ def union_parts(parts: list):
     return model
 
 
-def make_chair():
+def build_model():
     parts = []
     add_seat(parts)
     add_legs(parts)
     add_back(parts)
     return union_parts(parts)
-
-
-def main() -> None:
-    OUT_DIR.mkdir(exist_ok=True)
-    model = make_chair()
-    export_gltf(model, OUT_DIR / "door_model.glb", binary=True)
-    export_step(model, OUT_DIR / "door_model.step")
-    export_stl(model, OUT_DIR / "door_model.stl")
-    print(f"Wrote {OUT_DIR / 'door_model.glb'}")
-    print(f"Wrote {OUT_DIR / 'door_model.step'}")
-    print(f"Wrote {OUT_DIR / 'door_model.stl'}")
-
-
-if __name__ == "__main__":
-    main()

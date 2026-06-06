@@ -1,19 +1,31 @@
 # AGENTS.md
 
-## Project Notes
+## Project Purpose
 
-- Use `uv` for Python dependencies and model generation.
-- Use `pnpm` for the browser viewer and Playwright checks.
-- The generated CAD/viewer assets live in `output/`.
-- In `build123d`, transformation helpers such as `translate()` return a transformed shape; assign the result back, e.g. `shape = shape.translate(...)`.
-- For intentionally low-poly round parts, model them directly with `RegularPolygon(..., side_count=12)` and `extrude()` instead of creating cylinders and reducing them in a later step.
-- Before exporting CAD/viewer assets, union modeled parts with `fuse()` and verify the result is a single solid when the requested model should be one body.
+This repository is a template for asking Codex to create build123d models. Model source code is a first-class deliverable. The shared builder exports browser and CAD assets, and the React viewer discovers them through `output/models.json`.
+
+## Model Contract
+
+- Put each model in `models/<model-id>/model.py`. Use a lowercase Python identifier for `<model-id>`.
+- Export a `MODEL` dictionary with non-empty `id`, `name`, and `description` strings. `id` must equal the directory name.
+- Export a zero-argument `build_model()` function that returns one valid build123d solid.
+- Use millimeters for all dimensions. Model close to the origin with the vertical direction on the Z axis.
+- Assign transformation results back to the shape, for example `shape = shape.translate(...)`.
+- Model intentionally low-poly round parts with `RegularPolygon(..., side_count=12)` and `extrude()`.
+- Join all parts with `fuse()` and `clean()`. The shared builder rejects empty, invalid, or multi-solid results.
+- Do not export files from individual model modules. `build_models.py` owns GLB, STEP, STL, and manifest generation.
+- Keep generated sample assets in Git so the viewer works immediately after cloning.
 
 ## Common Commands
 
 ```powershell
-uv run python door_model.py
+uv sync
+uv run python build_models.py chair
+uv run python build_models.py --all
+pnpm install
 pnpm dev
+pnpm build
+pnpm test
 ```
 
-`door_model.py` writes `output/door_model.glb`, `output/door_model.step`, and `output/door_model.stl`. The viewer expects the GLB at `/output/door_model.glb`.
+Generated files live in `output/<model-id>/`. The viewer reads `output/models.json`.
