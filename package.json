@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 4173",
     "build": "vite build",
-    "test": "playwright test"
+    "test": "uv run python -m unittest discover -s tests -p \"test_*.py\" && playwright test"
   },
   "keywords": [],
   "author": "",

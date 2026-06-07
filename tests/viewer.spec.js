@@ -52,7 +52,13 @@ test.beforeEach(async ({ page }) => {
   );
 });
 
-test("shows the empty generated model manifest", async ({ page }) => {
+test("shows the empty state for an empty manifest", async ({ page }) => {
+  await page.route("**/output/models.json", (route) =>
+    route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({ defaultModelId: null, models: [] }),
+    }),
+  );
   await page.goto("/viewer.html");
 
   await expect(page.getByRole("button", { name: "All Models 0" })).toBeVisible();

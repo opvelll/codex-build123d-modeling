@@ -34,13 +34,13 @@ uv run python build_models.py --all
 
 Run Codex from the repository root and make a concrete request. For example:
 
-> Create a low table with build123d in `models/table/`, generate all output formats, and add it to the viewer. Use millimeters and return one fused solid.
+> Create a low table with build123d in `models/table/`, generate all output formats, and add it to the viewer. Use millimeters and return a valid build123d shape.
 
 Codex should add `models/table/model.py` with:
 
 - a `MODEL` dictionary containing `id`, `name`, and `description`
 - a zero-argument `build_model()` function
-- one valid solid produced by fusing and cleaning all modeled parts
+- a valid shape containing one or more solids; use a `Compound` when assembled parts should remain distinct
 
 After the source is ready, `uv run python build_models.py table` writes:
 
@@ -66,7 +66,7 @@ src/               # React and Three.js viewer
 build_models.py    # Model discovery, validation, export, and manifest generation
 ```
 
-All dimensions use millimeters. Each model must be non-empty, valid, and a single solid. The shared builder enforces these constraints before exporting.
+All dimensions use millimeters. Each model must be non-empty and valid, and may contain one solid or a multi-solid assembly. The shared builder enforces these constraints before exporting.
 
 ## Viewer
 
@@ -90,6 +90,6 @@ pnpm dev
 
 Codexへの依頼例:
 
-> `models/table/` にbuild123dでローテーブルを作成し、全形式を生成してビューアに追加してください。単位はmmで、融合済みの単一ソリッドにしてください。
+> `models/table/` にbuild123dでローテーブルを作成し、全形式を生成してビューアに追加してください。単位はmmで、有効な単一ソリッドまたは複数ソリッドのアセンブリにしてください。
 
 モデル追加後は `uv run python build_models.py table` を実行します。生成された `output/models.json` をビューアが読み込むため、モデルごとの画面実装は不要です。

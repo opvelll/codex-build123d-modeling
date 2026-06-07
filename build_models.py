@@ -43,13 +43,16 @@ def validate_metadata(model_id: str, metadata: Any) -> dict[str, str]:
 
 
 def validate_shape(model_id: str, shape) -> None:
+    if not hasattr(shape, "solids") or not hasattr(shape, "is_valid"):
+        raise TypeError(f"{model_id}: build_model() must return a build123d shape")
+
     solids = shape.solids()
     if not solids:
         raise ValueError(f"{model_id}: build_model() returned an empty shape")
-    if len(solids) != 1:
-        raise ValueError(f"{model_id}: expected one solid after fuse(), found {len(solids)}")
     if not shape.is_valid:
         raise ValueError(f"{model_id}: generated shape is not valid")
+    if any(not solid.is_valid for solid in solids):
+        raise ValueError(f"{model_id}: generated assembly contains an invalid solid")
 
 
 def build_one(model_id: str) -> dict[str, Any]:
