@@ -109,6 +109,25 @@ test("switches models from the sidebar and keeps camera controls available", asy
   expect(
     await page.evaluate(() => window.__initialViewerCanvas === document.querySelector("canvas")),
   ).toBe(true);
+  const cameraDirections = await page.evaluate(() => {
+    const cameras = window.__modelViewer.cameras;
+    return {
+      angle: cameras.get("angle").position.toArray(),
+      front: cameras.get("front").position.toArray(),
+      back: cameras.get("back").position.toArray(),
+      top: cameras.get("top").position.toArray(),
+      topUp: cameras.get("top").up.toArray(),
+    };
+  });
+  const centerX = (cameraDirections.front[0] + cameraDirections.back[0]) / 2;
+  const centerZ = (cameraDirections.front[2] + cameraDirections.back[2]) / 2;
+  expect(cameraDirections.angle[0]).toBeGreaterThan(centerX);
+  expect(cameraDirections.angle[2]).toBeGreaterThan(centerZ);
+  expect(cameraDirections.front[2]).toBeGreaterThan(centerZ);
+  expect(cameraDirections.back[2]).toBeLessThan(centerZ);
+  expect(cameraDirections.top[0]).toBeCloseTo(centerX);
+  expect(cameraDirections.top[2]).toBeCloseTo(centerZ);
+  expect(cameraDirections.topUp).toEqual([0, 0, -1]);
 
   const anglePanel = page.locator('[data-view="angle"]');
   const panelBox = await anglePanel.boundingBox();

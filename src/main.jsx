@@ -79,14 +79,16 @@ function configureCamera(view, camera, target, model, aspect = 1) {
   const distance = maxSize / (2 * Math.tan((camera.fov * Math.PI) / 360));
 
   target.copy(center);
+  camera.up.set(0, 1, 0);
   if (view === "front") {
-    camera.position.set(center.x, center.y + distance * 0.03, center.z - distance * 1.75);
-  } else if (view === "back") {
     camera.position.set(center.x, center.y + distance * 0.03, center.z + distance * 1.75);
+  } else if (view === "back") {
+    camera.position.set(center.x, center.y + distance * 0.03, center.z - distance * 1.75);
   } else if (view === "top") {
-    camera.position.set(center.x, center.y + distance * 1.65, center.z + distance * 0.02);
+    camera.up.set(0, 0, -1);
+    camera.position.set(center.x, center.y + distance * 1.65, center.z);
   } else {
-    camera.position.set(center.x + distance * 0.7, center.y + distance * 0.3, center.z - distance * 1.45);
+    camera.position.set(center.x + distance * 0.7, center.y + distance * 0.3, center.z + distance * 1.45);
   }
 
   camera.aspect = aspect;
