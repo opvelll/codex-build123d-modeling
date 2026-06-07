@@ -12,6 +12,46 @@ const VIEWS = [
   { id: "top", title: "Top", note: "Plan" },
 ];
 const ALL_MODELS_ID = "__all__";
+const modelLoader = new GLTFLoader();
+const modelCache = new Map();
+
+function loadModelAsset(model) {
+  const url = model.files.glb;
+  if (!modelCache.has(url)) {
+    const request = new Promise((resolve, reject) => {
+      modelLoader.load(
+        url,
+        (gltf) => {
+          gltf.scene.traverse((child) => {
+            if (!child.isMesh) return;
+            child.castShadow = true;
+            child.receiveShadow = true;
+            const materials = Array.isArray(child.material) ? child.material : [child.material];
+            materials.filter(Boolean).forEach((material) => {
+              material.side = THREE.DoubleSide;
+              material.roughness = Math.max(material.roughness ?? 0.55, 0.42);
+              material.needsUpdate = true;
+            });
+          });
+          resolve(gltf.scene);
+        },
+        undefined,
+        reject,
+      );
+    }).catch((error) => {
+      modelCache.delete(url);
+      throw error;
+    });
+    modelCache.set(url, request);
+  }
+  return modelCache.get(url);
+}
+
+function preloadModel(model) {
+  loadModelAsset(model).catch((error) => {
+    console.error(`Could not preload ${model.files.glb}`, error);
+  });
+}
 
 function createLights(scene) {
   scene.add(new THREE.HemisphereLight(0xffffff, 0x65736e, 2));
@@ -81,11 +121,21 @@ function disposeObject(object) {
   });
 }
 
+function disposeModelCache() {
+  modelCache.forEach((request) => {
+    request.then(disposeObject).catch(() => {});
+  });
+  modelCache.clear();
+}
+
 function ModelViewer({ models, viewerId, settings, onLoaded, onError }) {
   const containerRef = useRef(null);
   const canvasHostRef = useRef(null);
   const panelRefs = useRef(new Map());
   const settingsRef = useRef(settings);
+  const runtimeRef = useRef(null);
+  const loadGenerationRef = useRef(0);
+  const [runtimeReady, setRuntimeReady] = useState(false);
   const [status, setStatus] = useState("Loading");
 
   useEffect(() => {
@@ -136,14 +186,24 @@ function ModelViewer({ models, viewerId, settings, onLoaded, onError }) {
     const grid = new THREE.GridHelper(1, 14, 0x788d85, 0xc3d0ca);
     scene.add(grid);
 
-    let loadedModel = null;
     let frameId = 0;
-    let disposed = false;
+    const runtime = {
+      scene,
+      renderer,
+      cameras,
+      targets,
+      controls,
+      floor,
+      grid,
+      loadedModel: null,
+      resizeRenderer: null,
+    };
+    runtimeRef.current = runtime;
 
     const resizeRenderer = () => {
       const rect = container.getBoundingClientRect();
       renderer.setSize(rect.width, rect.height, false);
-      if (!loadedModel) return;
+      if (!runtime.loadedModel) return;
       VIEWS.forEach((view) => {
         const panel = panelRefs.current.get(view.id);
         if (!panel) return;
@@ -153,6 +213,7 @@ function ModelViewer({ models, viewerId, settings, onLoaded, onError }) {
         camera.updateProjectionMatrix();
       });
     };
+    runtime.resizeRenderer = resizeRenderer;
 
     const activateControl = (event) => {
       const active = VIEWS.find((view) => {
@@ -176,102 +237,6 @@ function ModelViewer({ models, viewerId, settings, onLoaded, onError }) {
     renderer.domElement.addEventListener("pointerdown", activateControl, true);
     renderer.domElement.addEventListener("pointermove", activateControl, true);
     renderer.domElement.addEventListener("wheel", activateControl, { capture: true, passive: true });
-
-    const loader = new GLTFLoader();
-    const loadScene = (model) =>
-      new Promise((resolve, reject) => {
-        loader.load(model.files.glb, (gltf) => resolve({ model, scene: gltf.scene }), undefined, reject);
-      });
-
-    Promise.all(models.map(loadScene))
-      .then((loadedScenes) => {
-        if (disposed) {
-          loadedScenes.forEach(({ scene: modelScene }) => disposeObject(modelScene));
-          return;
-        }
-        loadedModel = new THREE.Group();
-        let meshes = 0;
-
-        const measurements = loadedScenes.map(({ model, scene: modelScene }) => {
-          modelScene.traverse((child) => {
-            if (!child.isMesh) return;
-            meshes += 1;
-            child.castShadow = true;
-            child.receiveShadow = true;
-            const materials = Array.isArray(child.material) ? child.material : [child.material];
-            materials.filter(Boolean).forEach((material) => {
-              material.side = THREE.DoubleSide;
-              material.roughness = Math.max(material.roughness ?? 0.55, 0.42);
-              material.needsUpdate = true;
-            });
-          });
-          const box = new THREE.Box3().setFromObject(modelScene);
-          const wrapper = new THREE.Group();
-          wrapper.add(modelScene);
-          return {
-            model,
-            wrapper,
-            box,
-            size: box.getSize(new THREE.Vector3()),
-            center: box.getCenter(new THREE.Vector3()),
-          };
-        });
-
-        const largestWidth = Math.max(...measurements.map(({ size }) => size.x));
-        const gap = Math.max(largestWidth * 0.18, 0.12);
-        let cursorX = 0;
-        measurements.forEach(({ wrapper, box, size, center }) => {
-          wrapper.position.set(cursorX + size.x / 2 - center.x, -box.min.y, -center.z);
-          loadedModel.add(wrapper);
-          cursorX += size.x + gap;
-        });
-
-        const arrangedBox = new THREE.Box3().setFromObject(loadedModel);
-        const arrangedCenter = arrangedBox.getCenter(new THREE.Vector3());
-        loadedModel.children.forEach((child) => {
-          child.position.x -= arrangedCenter.x;
-        });
-        scene.add(loadedModel);
-
-        const box = new THREE.Box3().setFromObject(loadedModel);
-        const size = box.getSize(new THREE.Vector3());
-        const center = box.getCenter(new THREE.Vector3());
-        const footprint = Math.max(size.x, size.z) * 2.2;
-        floor.geometry.dispose();
-        floor.geometry = new THREE.PlaneGeometry(footprint, footprint);
-        floor.position.set(center.x, box.min.y, center.z);
-        grid.scale.set(footprint, footprint, footprint);
-        grid.position.copy(floor.position);
-
-        VIEWS.forEach((view) => {
-          const panel = panelRefs.current.get(view.id);
-          const rect = panel ? getPanelRect(container, panel) : { width: 1, height: 1 };
-          const camera = cameras.get(view.id);
-          const target = targets.get(view.id);
-          configureCamera(view.id, camera, target, loadedModel, rect.width / Math.max(rect.height, 1));
-          controls.get(view.id).target.copy(target);
-          controls.get(view.id).update();
-        });
-        resizeRenderer();
-        window.__modelViewer = {
-          id: viewerId,
-          urls: models.map((model) => model.files.glb),
-          url: models[0]?.files.glb,
-          cameras,
-          floorY: floor.position.y,
-          modelMinY: box.min.y,
-          modelCount: models.length,
-          bounds: { x: size.x, y: size.y, z: size.z },
-        };
-        setStatus("Loaded");
-        onLoaded(meshes);
-      })
-      .catch((error) => {
-        if (disposed) return;
-        console.error(error);
-        setStatus("Load failed");
-        onError("Could not load one or more model files.");
-      });
 
     const observer = new ResizeObserver(resizeRenderer);
     observer.observe(container);
@@ -309,22 +274,119 @@ function ModelViewer({ models, viewerId, settings, onLoaded, onError }) {
 
     resizeRenderer();
     render();
+    setRuntimeReady(true);
 
     return () => {
-      disposed = true;
+      loadGenerationRef.current += 1;
       cancelAnimationFrame(frameId);
       observer.disconnect();
       renderer.domElement.removeEventListener("pointerdown", activateControl, true);
       renderer.domElement.removeEventListener("pointermove", activateControl, true);
       renderer.domElement.removeEventListener("wheel", activateControl, true);
       controls.forEach((control) => control.dispose());
-      if (loadedModel) disposeObject(loadedModel);
       floor.geometry.dispose();
       floor.material.dispose();
       renderer.dispose();
       canvasHost.removeChild(renderer.domElement);
+      runtimeRef.current = null;
     };
-  }, [models, viewerId, onError, onLoaded]);
+  }, []);
+
+  useEffect(() => {
+    if (!runtimeReady || !models.length) return;
+
+    const generation = loadGenerationRef.current + 1;
+    loadGenerationRef.current = generation;
+    setStatus("Loading");
+
+    Promise.all(
+      models.map((model) =>
+        loadModelAsset(model).then((scene) => ({ model, scene: scene.clone(true) })),
+      ),
+    )
+      .then((loadedScenes) => {
+        if (generation !== loadGenerationRef.current) return;
+        const runtime = runtimeRef.current;
+        if (!runtime) return;
+
+        const { scene, cameras, targets, controls, floor, grid, resizeRenderer } = runtime;
+        if (runtime.loadedModel) scene.remove(runtime.loadedModel);
+
+        const loadedModel = new THREE.Group();
+        let meshes = 0;
+        const measurements = loadedScenes.map(({ model, scene: modelScene }) => {
+          modelScene.traverse((child) => {
+            if (child.isMesh) meshes += 1;
+          });
+          const box = new THREE.Box3().setFromObject(modelScene);
+          const wrapper = new THREE.Group();
+          wrapper.add(modelScene);
+          return {
+            model,
+            wrapper,
+            box,
+            size: box.getSize(new THREE.Vector3()),
+            center: box.getCenter(new THREE.Vector3()),
+          };
+        });
+
+        const largestWidth = Math.max(...measurements.map(({ size }) => size.x));
+        const gap = Math.max(largestWidth * 0.18, 0.12);
+        let cursorX = 0;
+        measurements.forEach(({ wrapper, box, size, center }) => {
+          wrapper.position.set(cursorX + size.x / 2 - center.x, -box.min.y, -center.z);
+          loadedModel.add(wrapper);
+          cursorX += size.x + gap;
+        });
+
+        const arrangedBox = new THREE.Box3().setFromObject(loadedModel);
+        const arrangedCenter = arrangedBox.getCenter(new THREE.Vector3());
+        loadedModel.children.forEach((child) => {
+          child.position.x -= arrangedCenter.x;
+        });
+        scene.add(loadedModel);
+        runtime.loadedModel = loadedModel;
+
+        const box = new THREE.Box3().setFromObject(loadedModel);
+        const size = box.getSize(new THREE.Vector3());
+        const center = box.getCenter(new THREE.Vector3());
+        const footprint = Math.max(size.x, size.z) * 2.2;
+        floor.geometry.dispose();
+        floor.geometry = new THREE.PlaneGeometry(footprint, footprint);
+        floor.position.set(center.x, box.min.y, center.z);
+        grid.scale.set(footprint, footprint, footprint);
+        grid.position.copy(floor.position);
+
+        VIEWS.forEach((view) => {
+          const panel = panelRefs.current.get(view.id);
+          const rect = panel ? getPanelRect(containerRef.current, panel) : { width: 1, height: 1 };
+          const camera = cameras.get(view.id);
+          const target = targets.get(view.id);
+          configureCamera(view.id, camera, target, loadedModel, rect.width / Math.max(rect.height, 1));
+          controls.get(view.id).target.copy(target);
+          controls.get(view.id).update();
+        });
+        resizeRenderer();
+        window.__modelViewer = {
+          id: viewerId,
+          urls: models.map((model) => model.files.glb),
+          url: models[0]?.files.glb,
+          cameras,
+          floorY: floor.position.y,
+          modelMinY: box.min.y,
+          modelCount: models.length,
+          bounds: { x: size.x, y: size.y, z: size.z },
+        };
+        setStatus("Loaded");
+        onLoaded(meshes);
+      })
+      .catch((error) => {
+        if (generation !== loadGenerationRef.current) return;
+        console.error(error);
+        setStatus("Load failed");
+        onError("Could not load one or more model files.");
+      });
+  }, [models, viewerId, onError, onLoaded, runtimeReady]);
 
   return (
     <div ref={containerRef} className="viewer">
@@ -373,6 +435,8 @@ function App() {
   const [viewerError, setViewerError] = useState("");
   const [partCount, setPartCount] = useState(null);
   const [settings, setSettings] = useState({ autoRotate: false, grid: true, floor: true });
+
+  useEffect(() => () => disposeModelCache(), []);
 
   useEffect(() => {
     let cancelled = false;
@@ -436,6 +500,8 @@ function App() {
               type="button"
               className={`model-card ${model.id === selectedId ? "active" : ""}`}
               onClick={() => selectModel(model.id)}
+              onPointerEnter={() => preloadModel(model)}
+              onFocus={() => preloadModel(model)}
               aria-pressed={model.id === selectedId}
             >
               <strong>{model.name}</strong>
@@ -492,7 +558,6 @@ function App() {
             </header>
             {viewerError && <div className="viewer-error">{viewerError}</div>}
             <ModelViewer
-              key={selectedId}
               models={selectedModels}
               viewerId={selectedId}
               settings={settings}
