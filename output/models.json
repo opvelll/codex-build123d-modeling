@@ -1,37 +1,4 @@
 {
-  "defaultModelId": "table",
-  "models": [
-    {
-      "id": "chair",
-      "name": "Wooden Chair",
-      "description": "A simple low-poly wooden chair built as one solid.",
-      "files": {
-        "glb": "/output/chair/chair.glb",
-        "step": "/output/chair/chair.step",
-        "stl": "/output/chair/chair.stl"
-      },
-      "dimensions": {
-        "x": 578.0,
-        "y": 520.0,
-        "z": 1055.0,
-        "unit": "mm"
-      }
-    },
-    {
-      "id": "table",
-      "name": "Wooden Dining Table",
-      "description": "A sturdy rectangular wooden dining table with aprons and lower stretchers.",
-      "files": {
-        "glb": "/output/table/table.glb",
-        "step": "/output/table/table.step",
-        "stl": "/output/table/table.stl"
-      },
-      "dimensions": {
-        "x": 1200.0,
-        "y": 700.0,
-        "z": 754.0,
-        "unit": "mm"
-      }
-    }
-  ]
+  "defaultModelId": null,
+  "models": []
 }

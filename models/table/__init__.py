@@ -1,1 +1,0 @@
-"""Wooden dining table model."""

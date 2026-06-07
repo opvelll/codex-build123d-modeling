@@ -1,1 +1,0 @@
-"""Sample chair model."""
