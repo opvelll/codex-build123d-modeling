@@ -83,6 +83,17 @@ a {
   white-space: nowrap;
 }
 
+.model-card span {
+  margin-left: auto;
+  color: #71807b;
+  font-size: 10px;
+}
+
+.all-models-card {
+  border-bottom: 1px solid #d7e0dc;
+  font-weight: 650;
+}
+
 .workspace {
   display: grid;
   min-width: 0;

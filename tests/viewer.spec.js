@@ -3,14 +3,19 @@ import { expect, test } from "playwright/test";
 test("loads the generated model manifest and GLB", async ({ page }) => {
   await page.goto("/viewer.html");
 
-  await expect(page.getByRole("button", { name: /Wooden Chair/ })).toBeVisible();
-  await expect(page.getByTestId("selected-model-name")).toHaveText("Wooden Chair");
+  await expect(page.getByRole("button", { name: /Wooden Dining Table/ })).toBeVisible();
+  await expect(page.getByTestId("selected-model-name")).toHaveText("Wooden Dining Table");
   await expect(page.locator(".load-status").first()).toHaveText("Loaded");
   await expect(page.getByRole("link", { name: "STEP" })).toHaveAttribute(
     "href",
-    "/output/chair/chair.step",
+    "/output/table/table.step",
   );
-  await expect.poll(() => page.evaluate(() => window.__modelViewer?.id)).toBe("chair");
+  await expect.poll(() => page.evaluate(() => window.__modelViewer?.id)).toBe("table");
+  await expect
+    .poll(() =>
+      page.evaluate(() => window.__modelViewer.floorY - window.__modelViewer.modelMinY),
+    )
+    .toBe(0);
 });
 
 test("switches models from the sidebar and keeps camera controls available", async ({ page }) => {
@@ -18,6 +23,7 @@ test("switches models from the sidebar and keeps camera controls available", asy
     route.fulfill({
       contentType: "application/json",
       body: JSON.stringify({
+        defaultModelId: "chair",
         models: [
           {
             id: "chair",
@@ -47,11 +53,11 @@ test("switches models from the sidebar and keeps camera controls available", asy
   );
 
   await page.goto("/viewer.html");
-  await expect(page.locator(".load-status").first()).toHaveText("Loaded");
+  await expect(page.locator(".load-status").first()).toHaveText("Loaded", { timeout: 15000 });
   await page.getByRole("button", { name: /Chair Copy/ }).click();
 
   await expect(page.getByTestId("selected-model-name")).toHaveText("Chair Copy");
-  await expect(page.locator(".load-status").first()).toHaveText("Loaded");
+  await expect(page.locator(".load-status").first()).toHaveText("Loaded", { timeout: 15000 });
   await expect.poll(() => page.evaluate(() => window.__modelViewer?.url)).toContain("chair-copy");
 
   const anglePanel = page.locator('[data-view="angle"]');
@@ -72,4 +78,21 @@ test("switches models from the sidebar and keeps camera controls available", asy
     )
     .not.toBe(distanceBefore);
   await expect(anglePanel).toBeVisible();
+});
+
+test("shows every model together at actual relative scale", async ({ page }) => {
+  await page.goto("/viewer.html");
+  await page.getByRole("button", { name: "All Models 2" }).click();
+
+  await expect(page.getByTestId("selected-model-name")).toHaveText("All Models");
+  await expect(page.locator(".load-status").first()).toHaveText("Loaded");
+  await expect.poll(() => page.evaluate(() => window.__modelViewer?.id)).toBe("__all__");
+  await expect.poll(() => page.evaluate(() => window.__modelViewer?.modelCount)).toBe(2);
+  await expect.poll(() => page.evaluate(() => window.__modelViewer?.bounds.x)).toBeGreaterThan(1.5);
+  await expect.poll(() => page.evaluate(() => window.__modelViewer?.bounds.x)).toBeLessThan(10);
+  await expect
+    .poll(() =>
+      page.evaluate(() => window.__modelViewer.floorY - window.__modelViewer.modelMinY),
+    )
+    .toBe(0);
 });

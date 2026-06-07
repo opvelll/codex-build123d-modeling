@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
@@ -11,6 +11,7 @@ const VIEWS = [
   { id: "back", title: "Back", note: "Elevation" },
   { id: "top", title: "Top", note: "Plan" },
 ];
+const ALL_MODELS_ID = "__all__";
 
 function createLights(scene) {
   scene.add(new THREE.HemisphereLight(0xffffff, 0x65736e, 2));
@@ -80,7 +81,7 @@ function disposeObject(object) {
   });
 }
 
-function ModelViewer({ model, settings, onLoaded, onError }) {
+function ModelViewer({ models, viewerId, settings, onLoaded, onError }) {
   const containerRef = useRef(null);
   const canvasHostRef = useRef(null);
   const panelRefs = useRef(new Map());
@@ -176,26 +177,59 @@ function ModelViewer({ model, settings, onLoaded, onError }) {
     renderer.domElement.addEventListener("pointermove", activateControl, true);
     renderer.domElement.addEventListener("wheel", activateControl, { capture: true, passive: true });
 
-    new GLTFLoader().load(
-      model.files.glb,
-      (gltf) => {
+    const loader = new GLTFLoader();
+    const loadScene = (model) =>
+      new Promise((resolve, reject) => {
+        loader.load(model.files.glb, (gltf) => resolve({ model, scene: gltf.scene }), undefined, reject);
+      });
+
+    Promise.all(models.map(loadScene))
+      .then((loadedScenes) => {
         if (disposed) {
-          disposeObject(gltf.scene);
+          loadedScenes.forEach(({ scene: modelScene }) => disposeObject(modelScene));
           return;
         }
-        loadedModel = gltf.scene;
+        loadedModel = new THREE.Group();
         let meshes = 0;
-        loadedModel.traverse((child) => {
-          if (!child.isMesh) return;
-          meshes += 1;
-          child.castShadow = true;
-          child.receiveShadow = true;
-          const materials = Array.isArray(child.material) ? child.material : [child.material];
-          materials.filter(Boolean).forEach((material) => {
-            material.side = THREE.DoubleSide;
-            material.roughness = Math.max(material.roughness ?? 0.55, 0.42);
-            material.needsUpdate = true;
+
+        const measurements = loadedScenes.map(({ model, scene: modelScene }) => {
+          modelScene.traverse((child) => {
+            if (!child.isMesh) return;
+            meshes += 1;
+            child.castShadow = true;
+            child.receiveShadow = true;
+            const materials = Array.isArray(child.material) ? child.material : [child.material];
+            materials.filter(Boolean).forEach((material) => {
+              material.side = THREE.DoubleSide;
+              material.roughness = Math.max(material.roughness ?? 0.55, 0.42);
+              material.needsUpdate = true;
+            });
           });
+          const box = new THREE.Box3().setFromObject(modelScene);
+          const wrapper = new THREE.Group();
+          wrapper.add(modelScene);
+          return {
+            model,
+            wrapper,
+            box,
+            size: box.getSize(new THREE.Vector3()),
+            center: box.getCenter(new THREE.Vector3()),
+          };
+        });
+
+        const largestWidth = Math.max(...measurements.map(({ size }) => size.x));
+        const gap = Math.max(largestWidth * 0.18, 0.12);
+        let cursorX = 0;
+        measurements.forEach(({ wrapper, box, size, center }) => {
+          wrapper.position.set(cursorX + size.x / 2 - center.x, -box.min.y, -center.z);
+          loadedModel.add(wrapper);
+          cursorX += size.x + gap;
+        });
+
+        const arrangedBox = new THREE.Box3().setFromObject(loadedModel);
+        const arrangedCenter = arrangedBox.getCenter(new THREE.Vector3());
+        loadedModel.children.forEach((child) => {
+          child.position.x -= arrangedCenter.x;
         });
         scene.add(loadedModel);
 
@@ -205,7 +239,7 @@ function ModelViewer({ model, settings, onLoaded, onError }) {
         const footprint = Math.max(size.x, size.z) * 2.2;
         floor.geometry.dispose();
         floor.geometry = new THREE.PlaneGeometry(footprint, footprint);
-        floor.position.set(center.x, box.min.y - Math.max(size.y * 0.015, 1), center.z);
+        floor.position.set(center.x, box.min.y, center.z);
         grid.scale.set(footprint, footprint, footprint);
         grid.position.copy(floor.position);
 
@@ -219,18 +253,25 @@ function ModelViewer({ model, settings, onLoaded, onError }) {
           controls.get(view.id).update();
         });
         resizeRenderer();
-        window.__modelViewer = { id: model.id, url: model.files.glb, cameras };
+        window.__modelViewer = {
+          id: viewerId,
+          urls: models.map((model) => model.files.glb),
+          url: models[0]?.files.glb,
+          cameras,
+          floorY: floor.position.y,
+          modelMinY: box.min.y,
+          modelCount: models.length,
+          bounds: { x: size.x, y: size.y, z: size.z },
+        };
         setStatus("Loaded");
         onLoaded(meshes);
-      },
-      undefined,
-      (error) => {
+      })
+      .catch((error) => {
         if (disposed) return;
         console.error(error);
         setStatus("Load failed");
-        onError(`Could not load ${model.files.glb}`);
-      },
-    );
+        onError("Could not load one or more model files.");
+      });
 
     const observer = new ResizeObserver(resizeRenderer);
     observer.observe(container);
@@ -283,7 +324,7 @@ function ModelViewer({ model, settings, onLoaded, onError }) {
       renderer.dispose();
       canvasHost.removeChild(renderer.domElement);
     };
-  }, [model, onError, onLoaded]);
+  }, [models, viewerId, onError, onLoaded]);
 
   return (
     <div ref={containerRef} className="viewer">
@@ -343,8 +384,11 @@ function App() {
       .then((manifest) => {
         if (cancelled) return;
         const nextModels = Array.isArray(manifest.models) ? manifest.models : [];
+        const defaultModelId = nextModels.some((model) => model.id === manifest.defaultModelId)
+          ? manifest.defaultModelId
+          : nextModels.at(-1)?.id;
         setModels(nextModels);
-        setSelectedId(nextModels[0]?.id ?? null);
+        setSelectedId(defaultModelId ?? null);
         if (!nextModels.length) setManifestError("No models are listed in output/models.json.");
       })
       .catch((error) => {
@@ -356,6 +400,11 @@ function App() {
   }, []);
 
   const selectedModel = models.find((model) => model.id === selectedId);
+  const selectedModels = useMemo(
+    () => (selectedId === ALL_MODELS_ID ? models : selectedModel ? [selectedModel] : []),
+    [models, selectedId, selectedModel],
+  );
+  const isAllModels = selectedId === ALL_MODELS_ID;
   const onLoaded = useCallback((count) => {
     setPartCount(count);
     setViewerError("");
@@ -372,6 +421,15 @@ function App() {
     <main className="app-shell">
       <aside className="sidebar">
         <nav className="model-list" aria-label="Models">
+          <button
+            type="button"
+            className={`model-card all-models-card ${isAllModels ? "active" : ""}`}
+            onClick={() => selectModel(ALL_MODELS_ID)}
+            aria-pressed={isAllModels}
+          >
+            <strong>All Models</strong>
+            <span>{models.length}</span>
+          </button>
           {models.map((model) => (
             <button
               key={model.id}
@@ -389,12 +447,18 @@ function App() {
       </aside>
 
       <section className="workspace">
-        {selectedModel ? (
+        {selectedModels.length ? (
           <>
             <header className="toolbar">
               <div className="model-heading">
-                <h2 data-testid="selected-model-name">{selectedModel.name}</h2>
-                <span>{dimensionsText(selectedModel.dimensions)}</span>
+                <h2 data-testid="selected-model-name">
+                  {isAllModels ? "All Models" : selectedModel.name}
+                </h2>
+                <span>
+                  {isAllModels
+                    ? `${selectedModels.length} models at actual relative scale`
+                    : dimensionsText(selectedModel.dimensions)}
+                </span>
                 <span>Meshes {partCount ?? "-"}</span>
               </div>
               <div className="toolbar-actions">
@@ -413,17 +477,24 @@ function App() {
                   checked={settings.floor}
                   onChange={(value) => setSettings((current) => ({ ...current, floor: value }))}
                 />
-                {["glb", "step", "stl"].map((format) => (
-                  <a key={format} className="download-link" href={selectedModel.files[format]} download>
-                    {format.toUpperCase()}
-                  </a>
-                ))}
+                {!isAllModels &&
+                  ["glb", "step", "stl"].map((format) => (
+                    <a
+                      key={format}
+                      className="download-link"
+                      href={selectedModel.files[format]}
+                      download
+                    >
+                      {format.toUpperCase()}
+                    </a>
+                  ))}
               </div>
             </header>
             {viewerError && <div className="viewer-error">{viewerError}</div>}
             <ModelViewer
-              key={selectedModel.id}
-              model={selectedModel}
+              key={selectedId}
+              models={selectedModels}
+              viewerId={selectedId}
               settings={settings}
               onLoaded={onLoaded}
               onError={onError}

@@ -99,9 +99,21 @@ def read_existing_manifest() -> dict[str, dict[str, Any]]:
     return {model["id"]: model for model in data.get("models", [])}
 
 
+def latest_model_id(models: list[dict[str, Any]]) -> str | None:
+    model_ids = {model["id"] for model in models}
+    candidates = [
+        ((MODELS_DIR / model_id / "model.py").stat().st_mtime_ns, model_id)
+        for model_id in model_ids
+    ]
+    return max(candidates)[1] if candidates else None
+
+
 def write_manifest(models: list[dict[str, Any]]) -> None:
     OUTPUT_DIR.mkdir(exist_ok=True)
-    manifest = {"models": sorted(models, key=lambda model: model["name"].casefold())}
+    manifest = {
+        "defaultModelId": latest_model_id(models),
+        "models": sorted(models, key=lambda model: model["name"].casefold()),
+    }
     manifest_path = OUTPUT_DIR / "models.json"
     manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
     print(f"Wrote {manifest_path.relative_to(ROOT)}")
