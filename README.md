@@ -17,7 +17,7 @@ Codex に自然言語で依頼して、[build123d](https://build123d.readthedocs
 リポジトリをクローンし、プロジェクトのルートで依存関係をインストールします。
 
 ```powershell
-git clone <repository-url> codex-build123d-modeling
+git clone https://github.com/opvelll/codex-build123d-modeling.git
 cd codex-build123d-modeling
 uv sync
 pnpm install
@@ -107,7 +107,7 @@ It is not an application with an embedded AI API. Open the repository in Codex a
 Clone the repository and install the dependencies from the project root.
 
 ```powershell
-git clone <repository-url> codex-build123d-modeling
+git clone https://github.com/opvelll/codex-build123d-modeling.git
 cd codex-build123d-modeling
 uv sync
 pnpm install
