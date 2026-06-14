@@ -4,6 +4,17 @@
 
 This repository is a template for asking Codex to create build123d models. Model source code is a first-class deliverable. The shared builder exports browser and CAD assets, and the React viewer discovers them through `output/models.json`.
 
+## Modeling Guidance
+
+Before creating, modifying, or reviewing model geometry, read `prompt/build123d-system-prompt.md` in full. Treat it as required supplemental guidance and apply its Builder API patterns, naming conventions, empty-shape safeguards, and selector practices wherever they do not conflict with higher-priority requirements.
+
+Use the following precedence when instructions conflict:
+
+1. The user's explicit instructions.
+2. The project-specific contract in this `AGENTS.md`.
+3. The API and behavior of the build123d version installed in this project.
+4. The supplemental guidance in `prompt/build123d-system-prompt.md`.
+
 ## Model Contract
 
 - Put each model in `models/<model-id>/model.py`. Use a lowercase Python identifier for `<model-id>`.
