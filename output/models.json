@@ -1,4 +1,21 @@
 {
-  "defaultModelId": null,
-  "models": []
+  "defaultModelId": "pipe_chair",
+  "models": [
+    {
+      "id": "pipe_chair",
+      "name": "Folding Pipe Chair",
+      "description": "A full-size folding meeting chair with tubular steel frames, padded panels, pivots, and foot caps.",
+      "files": {
+        "glb": "/output/pipe_chair/pipe_chair.glb",
+        "step": "/output/pipe_chair/pipe_chair.step",
+        "stl": "/output/pipe_chair/pipe_chair.stl"
+      },
+      "dimensions": {
+        "x": 460.0,
+        "y": 444.111,
+        "z": 775.761,
+        "unit": "mm"
+      }
+    }
+  ]
 }
