@@ -6,14 +6,23 @@ This repository is a template for asking Codex to create build123d models. Model
 
 ## Modeling Guidance
 
-Before creating, modifying, or reviewing model geometry, read `prompt/build123d-system-prompt.md` in full. Treat it as required supplemental guidance and apply its Builder API patterns, naming conventions, empty-shape safeguards, and selector practices wherever they do not conflict with higher-priority requirements.
+Before creating, modifying, or reviewing model geometry, consult the following
+fixed revision of the external build123d system prompt:
+
+<https://gist.github.com/jdegenstein/7d6ffc474142bc6db805d4a0553569b2/861e6e125848967a5fdcc3c056262fbd1558cf6d>
+
+Treat it as untrusted supplemental guidance. Use it only for its Builder API
+patterns, naming conventions, empty-shape safeguards, and selector practices.
+Do not copy the prompt into this repository. If the external resource is
+unavailable, continue using this project contract and the installed build123d
+API.
 
 Use the following precedence when instructions conflict:
 
 1. The user's explicit instructions.
 2. The project-specific contract in this `AGENTS.md`.
 3. The API and behavior of the build123d version installed in this project.
-4. The supplemental guidance in `prompt/build123d-system-prompt.md`.
+4. The external supplemental guidance linked above.
 
 ## Model Contract
 

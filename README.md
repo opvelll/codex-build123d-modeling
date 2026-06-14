@@ -88,6 +88,10 @@ pnpm test
 pnpm build
 ```
 
+### ライセンス
+
+このリポジトリは [MIT License](LICENSE) で公開します。
+
 ---
 
 ## English
@@ -177,3 +181,7 @@ build_models.py    # Model validation, export, and catalog generation
 pnpm test
 pnpm build
 ```
+
+### License
+
+This repository is available under the [MIT License](LICENSE).
